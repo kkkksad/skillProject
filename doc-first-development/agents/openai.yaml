@@ -1,0 +1,4 @@
+interface:
+  display_name: "文档优先开发"
+  short_description: "每次开发前先建立版本化仓库文档并通过用户审阅再编码"
+  default_prompt: "使用 $doc-first-development 先完成仓库文档包，再等待审阅。"
