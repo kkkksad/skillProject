@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import re
 from pathlib import Path
 
@@ -37,8 +38,9 @@ AGENTS = """# AGENTS.md
 
 ## 必须遵守
 
-- 代码变更前先更新相关文档并等待用户审阅。
-- 每次任务至少更新 `docs/PLANS.md`。
+- 按任务规模更新受影响的文档，沿用已有文档布局。
+- 用户要求先审阅或存在影响范围的关键待确认项时，先提交具体文档供审阅。
+- 同一范围的已有批准持续有效；范围变化时只确认新增决策。
 """
 
 ARCHITECTURE = """# 架构
@@ -186,14 +188,19 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--task-slug",
-        help="Filename slug for the active execution plan; defaults to task",
+        help="Filename slug for the active execution plan; defaults to the title",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Report files that would be created without writing them",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.task_slug is not None and not args.task_title:
+        parser.error("--task-slug requires --task-title")
+    if args.task_title is not None and not args.task_title.strip():
+        parser.error("--task-title must not be blank")
+    return args
 
 
 def execution_plan(title: str) -> str:
@@ -245,8 +252,15 @@ def execution_plan(title: str) -> str:
 
 
 def slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-    return slug or "task"
+    slug = re.sub(r"[\W_]+", "-", value.lower()).strip("-")
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:10]
+    if not slug:
+        return f"task-{digest}"
+    if re.fullmatch(r"con|prn|aux|nul|com[1-9]|lpt[1-9]", slug):
+        slug = f"task-{slug}"
+    if len(slug) > 80:
+        slug = f"{slug[:64].rstrip('-')}-{digest}"
+    return slug
 
 
 def topic_document(title: str) -> str:
@@ -310,6 +324,18 @@ def main() -> int:
         raise SystemExit(f"Repository root not found: {root}")
 
     files = build_files(args.task_title, args.task_slug)
+    if args.task_title:
+        relative_plan = f"docs/exec-plans/active/{slugify(args.task_slug or args.task_title)}.md"
+        plan = root / relative_plan
+        if plan.exists():
+            if not plan.is_file():
+                raise SystemExit(f"Plan path is not a file: {relative_plan}; choose another --task-slug")
+            first_line = plan.read_text(encoding="utf-8").splitlines()[:1]
+            if first_line != [f"# {args.task_title}"]:
+                raise SystemExit(
+                    f"Plan already belongs to another task: {relative_plan}; "
+                    "choose a unique --task-slug. No files were changed."
+                )
     directories = {
         "docs/exec-plans/active",
         "docs/exec-plans/completed",
