@@ -1,0 +1,4 @@
+interface:
+  display_name: "全栈项目流程"
+  short_description: "根据项目现状串联需求、架构、开发、真实联调与交付验收，复用已有方案和授权"
+  default_prompt: "使用 $fullstack-workflow 检查当前项目状态，按需求、设计、开发和验收的必要步骤完成本次约定范围。"

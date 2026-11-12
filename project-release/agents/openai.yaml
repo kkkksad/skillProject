@@ -1,0 +1,4 @@
+interface:
+  display_name: "发布与交付验收"
+  short_description: "核对配置、构建产物和迁移，执行已授权部署并验证目标环境的业务链路及恢复条件"
+  default_prompt: "使用 $project-release 检查本次发布范围与目标环境，完成已授权的发布准备、部署和业务冒烟验证。"
